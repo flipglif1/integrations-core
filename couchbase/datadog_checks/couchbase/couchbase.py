@@ -1,7 +1,7 @@
-# (C) Datadog, Inc. 2013-2017
+# (C) Datadog, Inc. 2018
 # (C) Justin Slattery <Justin.Slattery@fzysqr.com> 2013
 # All rights reserved
-# Licensed under Simplified BSD License (see LICENSE)
+# Licensed under a 3-clause BSD style license (see LICENSE)
 
 # stdlib
 import re
