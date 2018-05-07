@@ -10,8 +10,8 @@ import re
 import requests
 
 # project
-from checks import AgentCheck
-from util import headers
+from datadog_checks.checks import AgentCheck
+from datadog_checks.utils import headers
 
 # Constants
 COUCHBASE_STATS_PATH = '/pools/default'
@@ -237,26 +237,32 @@ class Couchbase(AgentCheck):
         for key, storage_type in storage_totals.items():
             for metric_name, val in storage_type.items():
                 if val is not None:
-                    metric_name = '.'.join(['couchbase', key, self.camel_case_to_joined_lower(metric_name)])
+                    metric_name = '.'.join(
+                        ['couchbase', key, self.camel_case_to_joined_lower(metric_name)])
                     self.gauge(metric_name, val, tags=tags)
 
         for bucket_name, bucket_stats in data['buckets'].items():
             for metric_name, val in bucket_stats.items():
                 if val is not None:
-                    norm_metric_name = self.camel_case_to_joined_lower(metric_name)
+                    norm_metric_name = self.camel_case_to_joined_lower(
+                        metric_name)
                     if norm_metric_name in self.BUCKET_STATS:
-                        full_metric_name = '.'.join(['couchbase', 'by_bucket', norm_metric_name])
+                        full_metric_name = '.'.join(
+                            ['couchbase', 'by_bucket', norm_metric_name])
                         metric_tags = list(tags)
                         metric_tags.append('bucket:%s' % bucket_name)
-                        self.gauge(full_metric_name, val[0], tags=metric_tags, device_name=bucket_name)
+                        self.gauge(
+                            full_metric_name, val[0], tags=metric_tags, device_name=bucket_name)
 
         for node_name, node_stats in data['nodes'].items():
             for metric_name, val in node_stats['interestingStats'].items():
                 if val is not None:
-                    metric_name = '.'.join(['couchbase', 'by_node', self.camel_case_to_joined_lower(metric_name)])
+                    metric_name = '.'.join(
+                        ['couchbase', 'by_node', self.camel_case_to_joined_lower(metric_name)])
                     metric_tags = list(tags)
                     metric_tags.append('node:%s' % node_name)
-                    self.gauge(metric_name, val, tags=metric_tags, device_name=node_name)
+                    self.gauge(metric_name, val, tags=metric_tags,
+                               device_name=node_name)
 
         for metric_name, val in data['query'].items():
             if val is not None:
@@ -265,7 +271,8 @@ class Couchbase(AgentCheck):
                     val = self.extract_seconds_value(val)
                 norm_metric_name = self.camel_case_to_joined_lower(metric_name)
                 if norm_metric_name in self.QUERY_STATS:
-                    full_metric_name = '.'.join(['couchbase', 'query', self.camel_case_to_joined_lower(norm_metric_name)])
+                    full_metric_name = '.'.join(
+                        ['couchbase', 'query', self.camel_case_to_joined_lower(norm_metric_name)])
                     self.gauge(full_metric_name, val, tags=tags)
 
     def _get_stats(self, url, instance):
@@ -279,7 +286,7 @@ class Couchbase(AgentCheck):
             auth = (instance['user'], instance['password'])
 
         r = requests.get(url, auth=auth, headers=headers(self.agentConfig),
-            timeout=timeout)
+                         timeout=timeout)
         r.raise_for_status()
         return r.json()
 
@@ -321,18 +328,19 @@ class Couchbase(AgentCheck):
             overall_stats = self._get_stats(url, instance)
             # No overall stats? bail out now
             if overall_stats is None:
-                raise Exception("No data returned from couchbase endpoint: %s" % url)
+                raise Exception(
+                    "No data returned from couchbase endpoint: %s" % url)
         except requests.exceptions.HTTPError as e:
             self.service_check(self.SERVICE_CHECK_NAME, AgentCheck.CRITICAL,
-                tags=service_check_tags, message=str(e.message))
+                               tags=service_check_tags, message=str(e.message))
             raise
         except Exception as e:
             self.service_check(self.SERVICE_CHECK_NAME, AgentCheck.CRITICAL,
-                tags=service_check_tags, message=str(e))
+                               tags=service_check_tags, message=str(e))
             raise
         else:
             self.service_check(self.SERVICE_CHECK_NAME, AgentCheck.OK,
-                tags=service_check_tags)
+                               tags=service_check_tags)
 
         couchbase['stats'] = overall_stats
 
@@ -360,7 +368,8 @@ class Couchbase(AgentCheck):
                 try:
                     bucket_stats = self._get_stats(url, instance)
                 except requests.exceptions.HTTPError:
-                    url_backup = '%s/pools/nodes/buckets/%s/stats' % (server, bucket_name)
+                    url_backup = '%s/pools/nodes/buckets/%s/stats' % (
+                        server, bucket_name)
                     bucket_stats = self._get_stats(url_backup, instance)
 
                 bucket_samples = bucket_stats['op']['samples']
@@ -377,7 +386,7 @@ class Couchbase(AgentCheck):
                     couchbase['query'] = query
             except requests.exceptions.HTTPError:
                 self.log.error("Error accessing the endpoint %s, make sure you're running at least "
-                    "couchbase 4.5 to collect the query monitoring metrics", url)
+                               "couchbase 4.5 to collect the query monitoring metrics", url)
 
         return couchbase
 
@@ -388,7 +397,8 @@ class Couchbase(AgentCheck):
         converted_variable = re.sub('\W+', '_', variable)
 
         # insert _ in front of capital letters and lowercase the string
-        converted_variable = re.sub('([A-Z])', '_\g<1>', converted_variable).lower()
+        converted_variable = re.sub(
+            '([A-Z])', '_\g<1>', converted_variable).lower()
 
         # remove duplicate _
         converted_variable = re.sub('_+', '_', converted_variable)
@@ -408,4 +418,4 @@ class Couchbase(AgentCheck):
         if unit not in self.TO_SECONDS:
             unit = 'us'
 
-        return float(val)/self.TO_SECONDS[unit]
+        return float(val) / self.TO_SECONDS[unit]
